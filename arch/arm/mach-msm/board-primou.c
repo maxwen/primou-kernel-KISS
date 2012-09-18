@@ -14,6 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/gpio_keys.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/bootmem.h>
@@ -114,6 +115,7 @@
 #endif
 
 #define GPIO_2MA       0
+#define GPIO_4MA	1
 #define PMIC_VREG_WLAN_LEVEL	2900
 
 #define ADV7520_I2C_ADDR	0x39
@@ -4216,7 +4218,7 @@ static int msm_hsusb_ldo_set_voltage(int mV)
 static int phy_init_seq[] = { 0x06, 0x36, 0x0C, 0x31, 0x31, 0x32, 0x1, 0x0D, 0x1, 0x10, -1 };
 static struct msm_otg_platform_data msm_otg_pdata = {
 	.phy_init_seq		= phy_init_seq,
-	.mode			= USB_PERIPHERAL,
+	.mode			= USB_OTG,
 	.otg_control		= OTG_PMIC_CONTROL,
 	.power_budget		= 750,
 	.phy_type = CI_45NM_INTEGRATED_PHY,
@@ -6438,6 +6440,9 @@ void primou_add_usb_devices(void)
 	msm_device_gadget_peripheral.dev.parent = &msm_device_otg.dev;
 	platform_device_register(&msm_device_gadget_peripheral);
 	platform_device_register(&android_usb_device);
+
+        msm_device_hsusb_host.dev.parent = &msm_device_otg.dev;
+	platform_device_register(&msm_device_hsusb_host);
 }
 
 static int __init board_serialno_setup(char *serialno)
@@ -6455,6 +6460,69 @@ static void primou_te_gpio_config(void)
 	config_gpio_table(te_gpio_table, ARRAY_SIZE(te_gpio_table));
 }
 #endif
+
+static struct gpio_keys_button primou_gpio_keys[] = {
+	{
+		.code = KEY_POWER,
+		.gpio = PRIMOU_GPIO_KEYPAD_POWER_KEY,	
+		.active_low = 1,
+		.desc = "power",
+		.type = EV_KEY,
+		.wakeup = 1,
+		.debounce_interval = 10,	
+		.can_disable = 0,
+		.value = 0,			
+	},
+	{
+		.code = KEY_VOLUMEUP,
+		.gpio = PM8058_GPIO_PM_TO_SYS(PRIMOU_VOL_UP),	
+		.active_low = 1,
+		.desc = "volume up",
+		.type = EV_KEY,
+		.wakeup = 0,
+		.debounce_interval = 10,	
+		.can_disable = 0,		
+		.value = 0,			
+	},
+	{
+		.code = KEY_VOLUMEDOWN,
+		.gpio = PM8058_GPIO_PM_TO_SYS(PRIMOU_VOL_DN),	
+		.active_low = 1,
+		.desc = "volume down",
+		.type = EV_KEY,
+		.wakeup = 0,
+		.debounce_interval = 10,	
+		.can_disable = 0,		
+		.value = 0,			
+	},
+};
+
+static struct gpio_keys_platform_data primou_gpio_keys_platform_data = {
+	.buttons	= primou_gpio_keys,
+	.nbuttons	= ARRAY_SIZE(primou_gpio_keys),
+};
+
+static struct platform_device primou_gpio_keys_device = {
+	.name   = "gpio-keys",
+	.id     = 0,
+	.dev    = {
+		.platform_data  = &primou_gpio_keys_platform_data,
+	},
+};
+
+static uint32_t inputs_gpio_table[] = {
+	PCOM_GPIO_CFG(PRIMOU_GPIO_KEYPAD_POWER_KEY, 0, GPIO_INPUT,
+		      GPIO_PULL_UP, GPIO_4MA),
+};
+
+int __init primou_init_gpio_keys(void){
+	pr_info("Registering gpio keys\n");
+
+	gpio_tlmm_config(inputs_gpio_table[0], GPIO_CFG_ENABLE);
+	platform_device_register(&primou_gpio_keys_device);
+
+	return 0;
+}
 
 __setup("androidboot.serialno=", board_serialno_setup);
 static void __init primou_init(void)
@@ -6660,7 +6728,8 @@ static void __init primou_init(void)
 	if (!properties_kobj || rc)
 		pr_err("failed to create board_properties\n");
 
-	primou_init_keypad();
+	//primou_init_keypad();
+	primou_init_gpio_keys();
 #ifdef CONFIG_MDP4_HW_VSYNC
 	primou_te_gpio_config();
 #endif

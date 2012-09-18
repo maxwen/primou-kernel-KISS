@@ -41,6 +41,8 @@
 #define FRAME_SIZE		(22 * 2) /* 36 bytes data */
 #define DMASZ 			(FRAME_SIZE * FRAME_NUM)
 
+extern int msm_get_call_state(void);
+
 struct buffer {
 	void *data;
 	uint32_t size;
@@ -488,7 +490,12 @@ static long audamrnb_in_ioctl(struct file *file,
 		if (copy_to_user((void *) arg, &stats, sizeof(stats)))
 			return -EFAULT;
 		return rc;
-	}
+        } else if (cmd == AUDIO_GET_VOICE_STATE) {
+                int vstate = audio->voice_state;
+                if (copy_to_user((void *) arg, &vstate, sizeof(vstate))) 
+			return -EFAULT;
+                return rc;
+        }
 
 	mutex_lock(&audio->lock);
 	switch (cmd) {
@@ -800,7 +807,8 @@ static int audamrnb_in_open(struct inode *inode, struct file *file)
 	audio->device_events = AUDDEV_EVT_DEV_RDY | AUDDEV_EVT_DEV_RLS |
 				AUDDEV_EVT_VOICE_STATE_CHG;
 
-	audio->voice_state = VOICE_STATE_INCALL;
+	audio->voice_state = msm_get_voice_state(); // VOICE_STATE_INCALL;
+
 	rc = auddev_register_evt_listner(audio->device_events,
 					AUDDEV_CLNT_ENC, audio->enc_id,
 					amrnb_in_listener, (void *) audio);

@@ -692,6 +692,8 @@ static int voice_thread(void *data)
 						rc = voice_cmd_device_info(v);
 						rc = voice_cmd_acquire_done(v);
 						v->voc_state = VOICE_ACQUIRE;
+                                                broadcast_event(AUDDEV_EVT_VOICE_STATE_CHG,
+                                                        VOICE_STATE_INCALL, SESSION_IGNORE);
 						pr_aud_info("voc_state -> VOICE_ACQUIRE\n");
 					} else {
 						pr_aud_info("start waiting for "
@@ -700,18 +702,21 @@ static int voice_thread(void *data)
 							v->dev_wait,
 							(v->dev_state == DEV_READY)
 							|| (atomic_read(&v->rel_start_flag) == 1));
-						if (atomic_read(&v->rel_start_flag)
-							== 1) {
+						if (atomic_read(&v->rel_start_flag) == 1) {
 							v->voc_state = VOICE_RELEASE;
 							pr_aud_info("voc_state -> VOICE_RELEASE\n");
 							atomic_dec(&v->rel_start_flag);
 							msm_snddev_withdraw_freq(0,
 								SNDDEV_CAP_TX, AUDDEV_CLNT_VOC);
+                                                        broadcast_event(AUDDEV_EVT_VOICE_STATE_CHG,
+                                                                VOICE_STATE_OFFCALL, SESSION_IGNORE);
 						} else {
 							voice_change_sample_rate(v);
 							rc = voice_cmd_device_info(v);
 							rc = voice_cmd_acquire_done(v);
 							v->voc_state = VOICE_ACQUIRE;
+                                                        broadcast_event(AUDDEV_EVT_VOICE_STATE_CHG,
+                                                                VOICE_STATE_INCALL, SESSION_IGNORE);
 							pr_aud_info("voc_state -> VOICE_ACQUIRE\n");
 						}
 					}
@@ -733,8 +738,9 @@ static int voice_thread(void *data)
 					(v->dev_state == DEV_INIT)) {
 					v->voc_state = VOICE_RELEASE;
 					pr_aud_info("voc_state -> VOICE_RELEASE\n");
-					msm_snddev_withdraw_freq(0, SNDDEV_CAP_TX,
-						AUDDEV_CLNT_VOC);
+					msm_snddev_withdraw_freq(0, SNDDEV_CAP_TX, AUDDEV_CLNT_VOC);
+                                        broadcast_event(AUDDEV_EVT_VOICE_STATE_CHG,
+                                                VOICE_STATE_OFFCALL,SESSION_IGNORE);
 				} else {
 					/* wait for the dev_state = RELEASE */
 					pr_aud_info("start waiting for "
@@ -751,8 +757,10 @@ static int voice_thread(void *data)
 					else {
 						rc = voice_cmd_release_done(v);
 						pr_aud_info("voc_state -> VOICE_RELEASE\n");
-						msm_snddev_withdraw_freq(0, SNDDEV_CAP_TX,
-							AUDDEV_CLNT_VOC);
+						msm_snddev_withdraw_freq(0, SNDDEV_CAP_TX, AUDDEV_CLNT_VOC);
+                                        	broadcast_event(AUDDEV_EVT_VOICE_STATE_CHG,
+                                               		VOICE_STATE_OFFCALL,SESSION_IGNORE);
+					
 					}
 					v->voc_state = VOICE_RELEASE;
 				}
@@ -799,6 +807,8 @@ static int voice_thread(void *data)
 				/* update voice state */
 				v->voc_state = VOICE_ACQUIRE;
 				pr_aud_info("voc_state -> VOICE_ACQUIRE\n");
+                                broadcast_event(AUDDEV_EVT_VOICE_STATE_CHG,
+                                        VOICE_STATE_INCALL, SESSION_IGNORE);
 			} else {
 				pr_aud_info("Get DEV_CHANGE_READY "
 					"at the wrong voc_state %d\n", v->voc_state);

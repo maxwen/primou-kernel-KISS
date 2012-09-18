@@ -25,6 +25,8 @@
  * 		or a LUN is seen that cannot have a device attached to it.
  */
 
+#define DEBUG
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -1692,7 +1694,7 @@ int scsi_scan_host_selected(struct Scsi_Host *shost, unsigned int channel,
 		scsi_complete_async_scans();
 
 	if (scsi_host_scan_allowed(shost) && scsi_autopm_get_host(shost) == 0) {
-		if (channel == SCAN_WILD_CARD)
+                if (channel == SCAN_WILD_CARD)
 			for (channel = 0; channel <= shost->max_channel;
 			     channel++)
 				scsi_scan_channel(shost, channel, id, lun,
@@ -1854,10 +1856,12 @@ void scsi_scan_host(struct Scsi_Host *shost)
 	struct task_struct *p;
 	struct async_scan_data *data;
 
-	if (strncmp(scsi_scan_type, "none", 4) == 0)
+	if (strncmp(scsi_scan_type, "none", 4) == 0){
 		return;
-	if (scsi_autopm_get_host(shost) < 0)
+        }
+	if (scsi_autopm_get_host(shost) < 0){
 		return;
+        }
 
 	data = scsi_prep_async_scan(shost);
 	if (!data) {

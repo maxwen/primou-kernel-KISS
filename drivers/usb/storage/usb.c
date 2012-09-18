@@ -829,6 +829,7 @@ static int usb_stor_scan_thread(void * __us)
 	struct us_data *us = (struct us_data *)__us;
 	struct device *dev = &us->pusb_intf->dev;
 
+	US_DEBUGP("USB Mass Storage usb_stor_scan_thread\n");
 	dev_dbg(dev, "device found\n");
 
 	set_freezable_with_signal();
@@ -950,6 +951,7 @@ int usb_stor_probe2(struct us_data *us)
 	int result;
 	struct device *dev = &us->pusb_intf->dev;
 
+	US_DEBUGP("USB Mass Storage usb_stor_probe2\n");
 	/* Make sure the transport and protocol have both been set */
 	if (!us->transport || !us->proto_handler) {
 		result = -ENXIO;

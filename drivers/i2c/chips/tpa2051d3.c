@@ -382,7 +382,7 @@ err2:
 		if (copy_from_user(&modeid, argp, sizeof(modeid)))
 			return -EFAULT;
 
-		if (modeid > tpa2051_mode_cnt || modeid <= 0) {
+		if (modeid > tpa2051_mode_cnt || modeid < 0) {
 			pr_err("unsupported tpa2051 mode %d\n", modeid);
 			return -EINVAL;
 		}

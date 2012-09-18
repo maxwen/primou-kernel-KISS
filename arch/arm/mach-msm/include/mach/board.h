@@ -629,7 +629,7 @@ struct t_mhl_status_notifier{
 int mhl_detect_register_notifier(struct t_mhl_status_notifier *);
 static LIST_HEAD(g_lh_mhl_detect_notifier_list);
 
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))|| defined(CONFIG_USB_MSM_OTG)
 /***********************************
 Direction: cable detect drvier -> usb driver
  ***********************************/

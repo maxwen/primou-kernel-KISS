@@ -757,10 +757,14 @@ static int msm_otg_set_suspend(struct otg_transceiver *otg, int suspend)
 		 * ID_GND --> ID_A transition can not be detected in LPM.
 		 * Disallow host bus suspend when ACA is enabled.
 		 */
-		if (suspend && !aca_enabled())
+		if (suspend && !aca_enabled()){
+                        printk("maxwen:%s %d pm_runtime_put\n", __func__, __LINE__);
 			pm_runtime_put(otg->dev);
-		else
+                }
+		else {
+                        printk("maxwen:%s %d pm_runtime_resume\n", __func__, __LINE__);
 			pm_runtime_resume(otg->dev);
+                }
 	}
 
 	return 0;
@@ -1066,6 +1070,9 @@ static void msm_otg_start_host(struct otg_transceiver *otg, int on)
 	if (on) {
 		USBH_DEBUG("host on\n");
 
+                if (motg->pdata->vbus_power)
+		        motg->pdata->vbus_power(1);
+		
 		/*
 		 * Some boards have a switch cotrolled by gpio
 		 * to enable/disable internal HUB. Enable internal
@@ -1083,7 +1090,11 @@ static void msm_otg_start_host(struct otg_transceiver *otg, int on)
 
 		if (pdata->setup_gpio)
 			pdata->setup_gpio(OTG_STATE_UNDEFINED);
+	        
+                if (motg->pdata->vbus_power)
+		        motg->pdata->vbus_power(0);
 	}
+        printk("maxwen:msm_otg_start_host %d %d\n", on, pm_children_suspended(otg->dev));
 }
 
 static int msm_otg_usbdev_notify(struct notifier_block *self,
@@ -1148,11 +1159,10 @@ static int msm_otg_set_host(struct otg_transceiver *otg, struct usb_bus *host)
 
 	if (!host) {
 		if (otg->state == OTG_STATE_A_HOST) {
+                        printk("maxwen:%s %d pm_runtime_get_sync\n", __func__, __LINE__);
 			pm_runtime_get_sync(otg->dev);
 			usb_unregister_notify(&motg->usbdev_nb);
 			msm_otg_start_host(otg, 0);
-			if (motg->pdata->vbus_power)
-				motg->pdata->vbus_power(0);
 			otg->host = NULL;
 			otg->state = OTG_STATE_UNDEFINED;
 			schedule_work(&motg->sm_work);
@@ -1176,10 +1186,12 @@ static int msm_otg_set_host(struct otg_transceiver *otg, struct usb_bus *host)
 	 * or peripheral is already registered with us.
 	 */
 	if (motg->pdata->mode == USB_HOST || otg->gadget) {
+                printk("maxwen:%s %d pm_runtime_get_sync\n", __func__, __LINE__);
 		pm_runtime_get_sync(otg->dev);
 		schedule_work(&motg->sm_work);
 	}
 
+        printk("maxwen:msm_otg_set_host %d\n", pm_children_suspended(otg->dev));
 	return 0;
 }
 
@@ -1217,7 +1229,7 @@ static void msm_otg_start_peripheral(struct otg_transceiver *otg, int on)
 		/* FIXME: release a wake lock here... */
 		wake_unlock(&motg->usb_otg_wlock);
 	}
-
+        printk("maxwen:msm_otg_start_peripheral %d %d\n", on, pm_children_suspended(otg->dev));
 }
 
 static int msm_otg_set_peripheral(struct otg_transceiver *otg,
@@ -1236,6 +1248,7 @@ static int msm_otg_set_peripheral(struct otg_transceiver *otg,
 
 	if (!gadget) {
 		if (otg->state == OTG_STATE_B_PERIPHERAL) {
+                        printk("maxwen:%s %d pm_runtime_get_sync\n", __func__, __LINE__);
 			pm_runtime_get_sync(otg->dev);
 			msm_otg_start_peripheral(otg, 0);
 			otg->gadget = NULL;
@@ -1255,10 +1268,11 @@ static int msm_otg_set_peripheral(struct otg_transceiver *otg,
 	 * or host is already registered with us.
 	 */
 	if (motg->pdata->mode == USB_PERIPHERAL || otg->host) {
+                printk("maxwen:%s %d pm_runtime_get_sync\n", __func__, __LINE__);
 		pm_runtime_get_sync(otg->dev);
 		schedule_work(&motg->sm_work);
 	}
-
+        printk("maxwen:msm_otg_set_peripheral %d\n", pm_children_suspended(otg->dev));
 	return 0;
 }
 
@@ -1375,7 +1389,7 @@ static void msm_chg_enable_aca_intr(struct msm_otg *motg)
 	}
 }
 
-static void msm_chg_disable_aca_intr(struct msm_otg *motg)
+/*static void msm_chg_disable_aca_intr(struct msm_otg *motg)
 {
 	struct otg_transceiver *otg = &motg->otg;
 
@@ -1389,7 +1403,7 @@ static void msm_chg_disable_aca_intr(struct msm_otg *motg)
 	default:
 		break;
 	}
-}
+}*/
 
 static bool msm_chg_check_aca_intr(struct msm_otg *motg)
 {
@@ -1856,10 +1870,14 @@ static void msm_otg_sm_work(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg, sm_work);
 	struct otg_transceiver *otg = &motg->otg;
+        int charge_timer_fallback=0;
+
+        #define MAX_CHARGE_TIMER_FALLBACK 42
 
 	USBH_INFO("%s: state:%s bit:0x%08x\n", __func__,
 		state_string(otg->state), (unsigned) motg->inputs);
 
+        printk("maxwen:%s %d pm_runtime_resume\n", __func__, __LINE__);
 	pm_runtime_resume(otg->dev);
 	switch (otg->state) {
 	case OTG_STATE_UNDEFINED:
@@ -1869,7 +1887,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 		otg->state = OTG_STATE_B_IDLE;
 		if (!test_bit(B_SESS_VLD, &motg->inputs) &&
 				test_bit(ID, &motg->inputs)) {
+                        printk("maxwen:%s %d pm_runtime_put_noidle\n", __func__, __LINE__);
 			pm_runtime_put_noidle(otg->dev);
+                        printk("maxwen:%s %d pm_runtime_suspend\n", __func__, __LINE__);
 			pm_runtime_suspend(otg->dev);
 			break;
 		}
@@ -1879,15 +1899,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 		if ((!test_bit(ID, &motg->inputs) ||
 				test_bit(ID_A, &motg->inputs)) && otg->host) {
 			USBH_INFO("!id || id_a\n");
-			if (motg->chg_type == USB_ACA_DOCK_CHARGER)
-				msm_otg_notify_charger(motg,
-						IDEV_ACA_CHG_MAX);
-			else if (test_bit(ID_A, &motg->inputs))
-				msm_otg_notify_charger(motg,
-						IDEV_ACA_CHG_MAX - IUNIT);
-			else if (motg->pdata->vbus_power)
-				motg->pdata->vbus_power(1);
-			msm_otg_start_host(otg, 1);
+                        printk("maxwen:%s %d motg->chg_type %d\n", __func__, __LINE__, motg->chg_type);
 			/*
 			 * Link can not generate PHY_ALT interrupt
 			 * in host mode when no device is attached
@@ -1896,10 +1908,45 @@ static void msm_otg_sm_work(struct work_struct *w)
 			 * Hence disable PHY_ALT interrupt and perform
 			 * polling to detect RID change.
 			 */
-			msm_chg_enable_aca_det(motg);
-			msm_chg_disable_aca_intr(motg);
-			mod_timer(&motg->id_timer, ID_TIMER_FREQ);
+			//msm_chg_enable_aca_det(motg);
+			//msm_chg_disable_aca_intr(motg);
 			otg->state = OTG_STATE_A_HOST;
+      
+                        // wait until charger detection if any is done
+                        if (test_bit(B_SESS_VLD, &motg->inputs)){
+                                if(motg->chg_state != USB_CHG_STATE_DETECTED){
+                                        charge_timer_fallback=0;
+                                        while(motg->chg_state != USB_CHG_STATE_DETECTED){
+                                                flush_delayed_work_sync(&motg->chg_work);
+                                                charge_timer_fallback++;
+                                                // just tpo make sure we not end in an endless loop here
+                                                if(charge_timer_fallback==MAX_CHARGE_TIMER_FALLBACK){
+                                                        USBH_INFO("maxwen:MAX charge_timer_fallback reached\n");
+                                                        break;
+                                                }
+                                        }
+                                        if(charge_timer_fallback!=MAX_CHARGE_TIMER_FALLBACK){
+                                                // last one after USB_CHG_STATE_DETECTED
+                                                flush_delayed_work_sync(&motg->chg_work);
+
+			                        if (motg->chg_type == USB_ACA_DOCK_CHARGER)
+				                        msm_otg_notify_charger(motg,
+						                IDEV_ACA_CHG_MAX);
+			                        else if (test_bit(ID_A, &motg->inputs))
+				                        msm_otg_notify_charger(motg,
+						                IDEV_ACA_CHG_MAX - IUNIT);
+                                                else
+                                                        msm_otg_notify_charger(motg, IDEV_CHG_MIN);
+                                        }
+                                }
+                        }
+
+			motg->ac_detect_count = 0;
+			del_timer(&motg->ac_detect_timer);
+
+			mod_timer(&motg->id_timer, ID_TIMER_FREQ);
+			msm_otg_start_host(otg, 1);
+
 		} else if (test_bit(B_SESS_VLD, &motg->inputs)) {
 			USBH_INFO("b_sess_vld\n");
 			switch (motg->chg_state) {
@@ -1913,7 +1960,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 							IDEV_CHG_MAX);
 					if (motg->reset_phy_before_lpm)
 						msm_otg_reset(otg);
+                                        printk("maxwen:%s %d pm_runtime_put_noidle\n", __func__, __LINE__);
 					pm_runtime_put_noidle(otg->dev);
+                                        printk("maxwen:%s %d pm_runtime_suspend\n", __func__, __LINE__);
 					pm_runtime_suspend(otg->dev);
 					break;
 				case USB_ACA_B_CHARGER:
@@ -1980,8 +2029,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 				motg->connect_type = CONNECT_TYPE_NONE;
 				queue_work(motg->usb_wq, &motg->notifier_work);
 			}
-
+                        printk("maxwen:%s %d pm_runtime_put_noidle\n", __func__, __LINE__);
 			pm_runtime_put_noidle(otg->dev);
+                        printk("maxwen:%s %d pm_runtime_suspend\n", __func__, __LINE__);
 			pm_runtime_suspend(otg->dev);
 		}
 		break;
@@ -2033,10 +2083,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 				!test_bit(ID_A, &motg->inputs)) {
 			USBH_INFO("id && !id_a\n");
 			msm_otg_start_host(otg, 0);
-			if (motg->pdata->vbus_power) {
-				motg->pdata->vbus_power(0);
-				msleep(100); /* TA_WAIT_VFALL */
-			}
+			
+			msleep(100); /* TA_WAIT_VFALL */
+
 			/*
 			 * Exit point of host mode.
 			 *
@@ -2051,24 +2100,26 @@ static void msm_otg_sm_work(struct work_struct *w)
 			 * PHY_ALT interrupt can not occur in host mode.
 			 */
 			del_timer_sync(&motg->id_timer);
+
 			if (motg->chg_state != USB_CHG_STATE_UNDEFINED) {
 				msm_otg_link_reset(motg);
 				msm_chg_enable_aca_intr(motg);
 			}
 			otg->state = OTG_STATE_B_IDLE;
+                        // make sure it is cleared so that on next
+                        // enter we will go directly into LPM
+                        // the msm_otg_set_vbus_state call may come 
+                        // not before
+                        clear_bit(B_SESS_VLD, &motg->inputs);
 			schedule_work(w);
-		} else if (test_bit(ID_A, &motg->inputs)) {
+		} /* else if (test_bit(ID_A, &motg->inputs)) {
 			USBH_INFO("id_a\n");
-			if (motg->pdata->vbus_power)
-				motg->pdata->vbus_power(0);
 			msm_otg_notify_charger(motg,
 					IDEV_ACA_CHG_MAX - motg->mA_port);
 		} else if (!test_bit(ID, &motg->inputs)) {
 			USBH_INFO("!id\n");
-			msm_otg_notify_charger(motg, 0);
-			if (motg->pdata->vbus_power)
-				motg->pdata->vbus_power(1);
-		}
+ 			msm_otg_notify_charger(motg, 0);
+		}*/
 		break;
 	default:
 		break;
@@ -2219,7 +2270,7 @@ void msm_otg_set_disable_usb(int disable_usb)
 }
 
 
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 void msm_otg_set_id_state(int id)
 {
 	struct msm_otg *motg = the_msm_otg;
@@ -2248,7 +2299,7 @@ void msm_otg_set_id_state(int id)
 
 	/* Hold a wake_lock so that it will not sleep in detection */
 	wake_lock_timeout(&motg->cable_detect_wlock, 3 * HZ);
-	schedule_work(&motg->sm_work);
+        schedule_work(&motg->sm_work);
 }
 
 static void usb_host_cable_detect(bool cable_in)
@@ -2403,6 +2454,7 @@ static ssize_t msm_otg_mode_write(struct file *file, const char __user *ubuf,
 		goto out;
 	}
 
+        printk("maxwen:%s %d pm_runtime_resume\n", __func__, __LINE__);
 	pm_runtime_resume(otg->dev);
 	schedule_work(&motg->sm_work);
 out:
@@ -2530,7 +2582,7 @@ static void msm_otg_debugfs_cleanup(void)
 	debugfs_remove_recursive(msm_otg_dbg_root);
 }
 
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 static struct t_usb_host_status_notifier usb_host_status_notifier = {
 	.name = "usb_host",
 	.func = usb_host_cable_detect,
@@ -2877,7 +2929,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
 		pm8921_charger_register_vbus_sn(&msm_otg_set_vbus_state);
 
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))|| defined(CONFIG_USB_MSM_OTG)
 		usb_host_detect_register_notifier(&usb_host_status_notifier);
 #endif
 
@@ -2888,7 +2940,9 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 			|| motg->pdata->phy_notify_enabled)
 			motg->caps = ALLOW_PHY_RETENTION;
 	}
+        printk("maxwen:%s %d pm_runtime_set_active\n", __func__, __LINE__);
 	pm_runtime_set_active(&pdev->dev);
+        printk("maxwen:%s %d pm_runtime_enable\n", __func__, __LINE__);
 	pm_runtime_enable(&pdev->dev);
 
 	motg->xo_handle = msm_xo_get(MSM_XO_PXO, "usb");
@@ -2963,9 +3017,11 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 	cancel_delayed_work_sync(&motg->chg_work);
 	cancel_work_sync(&motg->sm_work);
 
+        printk("maxwen:%s %d pm_runtime_resume\n", __func__, __LINE__);
 	pm_runtime_resume(&pdev->dev);
 
 	device_init_wakeup(&pdev->dev, 0);
+        printk("maxwen:%s %d pm_runtime_disable\n", __func__, __LINE__);
 	pm_runtime_disable(&pdev->dev);
 	wake_lock_destroy(&motg->usb_otg_wlock);
 	wake_lock_destroy(&motg->cable_detect_wlock);
@@ -3002,6 +3058,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		msm_hsusb_init_vddcx(motg, 0);
 
 	iounmap(motg->regs);
+        printk("maxwen:%s %d pm_runtime_set_suspended\n", __func__, __LINE__);
 	pm_runtime_set_suspended(&pdev->dev);
 
 	if (!IS_ERR(motg->phy_reset_clk))
@@ -3030,10 +3087,21 @@ static int msm_otg_runtime_idle(struct device *dev)
 
 	dev_dbg(dev, "OTG runtime idle\n");
 
-	if (otg->state == OTG_STATE_UNDEFINED)
-		return -EAGAIN;
-	else
-		return 0;
+	//if (otg->state == OTG_STATE_UNDEFINED)
+	//	return -EAGAIN;
+	//else
+	//	return 0;
+
+	/*
+	 * It is observed some times that a spurious interrupt
+	 * comes when PHY is put into LPM immediately after PHY reset.
+	 * This 1 sec delay also prevents entering into LPM immediately
+	 * after asynchronous interrupt.
+	 */
+	if (otg->state != OTG_STATE_UNDEFINED)
+		pm_schedule_suspend(dev, 1000);
+
+	return -EAGAIN;
 }
 
 static int msm_otg_runtime_suspend(struct device *dev)
@@ -3049,6 +3117,7 @@ static int msm_otg_runtime_resume(struct device *dev)
 	struct msm_otg *motg = dev_get_drvdata(dev);
 
 	dev_dbg(dev, "OTG runtime resume\n");
+        printk("maxwen:%s %d pm_runtime_get_noresume\n", __func__, __LINE__);
 	pm_runtime_get_noresume(dev);
 	return msm_otg_resume(motg);
 }
@@ -3062,6 +3131,7 @@ static int msm_otg_pm_suspend(struct device *dev)
 	dev_dbg(dev, "OTG PM suspend\n");
 
 #ifdef CONFIG_PM_RUNTIME
+        printk("maxwen:%s %d pm_runtime_suspend\n", __func__, __LINE__);
 	ret = pm_runtime_suspend(dev);
 	if (ret > 0)
 		ret = 0;

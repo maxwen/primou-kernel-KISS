@@ -112,7 +112,7 @@ static void send_cable_connect_notify(int cable_type)
 	struct cable_detect_info *pInfo = &the_cable_info;
 
 	mutex_lock(&cable_notify_sem);
-	CABLE_DEBUG("%s: cable_type = %d\n", __func__, cable_type);
+	CABLE_INFO("%s: cable_type = %d\n", __func__, cable_type);
 
 	if (cable_type == CONNECT_TYPE_UNKNOWN)
 		cable_type = CONNECT_TYPE_USB;
@@ -164,7 +164,7 @@ int cable_detect_register_notifier(struct t_cable_status_notifier *notifier)
 	return 0;
 }
 
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 static DEFINE_MUTEX(usb_host_notify_sem);
 static void send_usb_host_connect_notify(int cable_in)
 {
@@ -367,7 +367,7 @@ static void cable_detect_handler(struct work_struct *w)
 		sii9234_mhl_device_wakeup();
 		break;
 #endif
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 	case DOCK_STATE_USB_HOST:
 		CABLE_INFO("USB Host inserted\n");
 		send_usb_host_connect_notify(1);
@@ -408,7 +408,7 @@ static void cable_detect_handler(struct work_struct *w)
 			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
 			break;
 #endif
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 		case DOCK_STATE_USB_HOST:
 			CABLE_INFO("USB host cable removed\n");
 			pInfo->accessory_type = DOCK_STATE_UNDOCKED;
@@ -482,7 +482,7 @@ static int mhl_detect(struct cable_detect_info *pInfo)
 	if (pInfo->config_usb_id_gpios)
 		pInfo->config_usb_id_gpios(1);
 	else {
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 		type = DOCK_STATE_USB_HOST;
 #else
 		type = DOCK_STATE_UNDEFINED;
@@ -502,7 +502,7 @@ static int mhl_detect(struct cable_detect_info *pInfo)
 		type = DOCK_STATE_UNDEFINED;
 #endif
 	else
-#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
+#if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST)) || defined(CONFIG_USB_MSM_OTG)
 		type = DOCK_STATE_USB_HOST;
 #else
 		type = DOCK_STATE_UNDEFINED;
