@@ -4568,7 +4568,7 @@ static struct platform_device msm_adc_device = {
 	},
 };
 
-#ifdef CONFIG_SERIAL_MSM_HS
+#if defined(CONFIG_SERIAL_MSM_HS) || defined(CONFIG_SERIAL_MSM_HS_LPM)
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
         .rx_wakeup_irq = -1,
 	.inject_rx_on_wakeup = 0,
@@ -4600,61 +4600,6 @@ struct platform_device bcm_bt_lpm_device = {
 };
 #endif
 
-#if 0
-static uint32_t primou_bt_gpio_table[] = {
-
-	/* BT_RTS */
-	GPIO_CFG(PRIMOU_GPIO_BT_UART1_RTS,
-				1,
-				GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL,
-				GPIO_CFG_8MA),
-	/* BT_CTS */
-	GPIO_CFG(PRIMOU_GPIO_BT_UART1_CTS,
-				1,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
-				GPIO_CFG_8MA),
-	/* BT_RX */
-	GPIO_CFG(PRIMOU_GPIO_BT_UART1_RX,
-				1,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
-				GPIO_CFG_8MA),
-	/* BT_TX */
-	GPIO_CFG(PRIMOU_GPIO_BT_UART1_TX,
-				1,
-				GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL,
-				GPIO_CFG_8MA),
-
-	/* BT_HOST_WAKE */
-	GPIO_CFG(PRIMOU_GPIO_BT_HOST_WAKE,
-				0,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
-				GPIO_CFG_4MA),
-	/* BT_CHIP_WAKE */
-	GPIO_CFG(PRIMOU_GPIO_BT_WAKE,
-				0,
-				GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL,
-				GPIO_CFG_4MA),
-
-	/* BT_RESET_N */
-	GPIO_CFG(PRIMOU_GPIO_BT_RESET_N,
-				0,
-				GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL,
-				GPIO_CFG_4MA),
-	/* BT_SHUTDOWN_N */
-	GPIO_CFG(PRIMOU_GPIO_BT_SHUTDOWN_N,
-				0,
-				GPIO_CFG_OUTPUT,
-				GPIO_CFG_NO_PULL,
-				GPIO_CFG_4MA),
-};
-#endif
 #endif
 
 #ifdef CONFIG_BT
@@ -5048,10 +4993,7 @@ static struct platform_device *devices[] __initdata = {
 
         &msm_device_adspdec,
         &qup_device_i2c,
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
-        /*&msm_bt_power_device,*/
-#endif
+
         &msm_kgsl_3d0,
         &msm_kgsl_2d0,
         &msm_device_vidc_720p,
@@ -5085,7 +5027,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_SERIAL_BCM_BT_LPM
 	&bcm_bt_lpm_device,
 #endif
-#ifdef CONFIG_SERIAL_MSM_HS
+#if defined(CONFIG_SERIAL_MSM_HS) || defined(CONFIG_SERIAL_MSM_HS_LPM)
         &msm_device_uart_dm1,
 #endif
 #ifdef CONFIG_BT
@@ -5159,10 +5101,7 @@ static struct platform_device *devices_CH[] __initdata = {
 
 	&msm_device_adspdec,
 	&qup_device_i2c,
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
-	/*&msm_bt_power_device,*/
-#endif
+
 	&msm_kgsl_3d0,
 	&msm_kgsl_2d0,
 	&msm_device_vidc_720p,
@@ -5196,7 +5135,7 @@ static struct platform_device *devices_CH[] __initdata = {
 #ifdef CONFIG_SERIAL_BCM_BT_LPM
 	&bcm_bt_lpm_device,
 #endif
-#ifdef CONFIG_SERIAL_MSM_HS
+#if defined(CONFIG_SERIAL_MSM_HS) || defined(CONFIG_SERIAL_MSM_HS_LPM)
 	&msm_device_uart_dm1,
 #endif
 #ifdef CONFIG_BT
@@ -6638,14 +6577,17 @@ static void __init primou_init(void)
 	bt_export_bd_address();
 #endif
 
-#ifdef CONFIG_SERIAL_MSM_HS
+#if defined(CONFIG_SERIAL_MSM_HS) || defined(CONFIG_SERIAL_MSM_HS_LPM)
 #ifndef CONFIG_SERIAL_BCM_BT_LPM
 	msm_uart_dm1_pdata.rx_wakeup_irq = gpio_to_irq(PRIMOU_GPIO_BT_HOST_WAKE);
 #endif
+#ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm1.name = "msm_serial_hs_brcm";
+#endif
+#ifdef CONFIG_SERIAL_MSM_HS_LPM
+	msm_device_uart_dm1.name = "msm_serial_hs_brcm_lpm";
+#endif
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
-
-        //config_gpio_table(primou_bt_gpio_table, ARRAY_SIZE(primou_bt_gpio_table));
 #endif
 
 #ifdef CONFIG_USB_MSM_OTG_72K

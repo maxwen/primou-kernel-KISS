@@ -2182,7 +2182,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 
 	/* for debug */
-	printk(KERN_INFO "[BT]BRCM chip\n");
+	printk(KERN_INFO "[BT]BRCM chip - LPM\n");
 
 	if (pdev->id < 0 || pdev->id >= UARTDM_NR) {
 		printk(KERN_ERR "[BT]Invalid plaform device ID = %d\n",
@@ -2330,7 +2330,7 @@ static int __init msm_serial_hs_init(void)
 		return ret;
 	}
 
-	printk(KERN_INFO "[BT]msm_serial_hs_brcm_new module loaded\n");
+	printk(KERN_INFO "[BT]msm_serial_hs_brcm_lpm module loaded\n");
 	return ret;
 }
 
@@ -2409,7 +2409,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 
 static void __exit msm_serial_hs_exit(void)
 {
-	printk(KERN_INFO "[BT]msm_serial_hs_brcm_new module removed\n");
+	printk(KERN_INFO "[BT]msm_serial_hs_brcm_lpm module removed\n");
 	platform_driver_unregister(&msm_serial_hs_platform_driver);
 	uart_unregister_driver(&msm_hs_driver);
 	destroy_workqueue(msm_hs_workqueue);
@@ -2531,14 +2531,14 @@ static struct platform_driver msm_serial_hs_platform_driver = {
 	.probe = msm_hs_probe,
 	.remove = msm_hs_remove,
 	.driver = {
-		   .name = "msm_serial_hs_brcm",
+		   .name = "msm_serial_hs_brcm_lpm",
 		.pm   = &msm_hs_dev_pm_ops,
 	},
 };
 
 static struct uart_driver msm_hs_driver = {
 	.owner = THIS_MODULE,
-	.driver_name = "msm_serial_hs_brcm",
+	.driver_name = "msm_serial_hs_brcm_lpm",
 	.dev_name = "ttyHS",
 	.nr = UARTDM_NR,
 	.cons = 0,
