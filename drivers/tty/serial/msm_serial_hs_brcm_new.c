@@ -1500,7 +1500,6 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct msm_hs_rx *rx = &msm_uport->rx;
 
-	printk(KERN_ERR "[BT] %s\n", __func__);
 	spin_lock_irqsave(&uport->lock, flags);
 
 	isr_status = msm_hs_read(uport, UARTDM_MISR_ADDR);
@@ -2331,7 +2330,7 @@ static int __init msm_serial_hs_init(void)
 		return ret;
 	}
 
-	printk(KERN_INFO "[BT]msm_serial_hs module loaded\n");
+	printk(KERN_INFO "[BT]msm_serial_hs_brcm_new module loaded\n");
 	return ret;
 }
 
@@ -2410,7 +2409,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 
 static void __exit msm_serial_hs_exit(void)
 {
-	printk(KERN_INFO "[BT]msm_serial_hs module removed\n");
+	printk(KERN_INFO "[BT]msm_serial_hs_brcm_new module removed\n");
 	platform_driver_unregister(&msm_serial_hs_platform_driver);
 	uart_unregister_driver(&msm_hs_driver);
 	destroy_workqueue(msm_hs_workqueue);
