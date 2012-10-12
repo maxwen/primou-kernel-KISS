@@ -2892,9 +2892,14 @@ static struct clk_local_ownership {
 	OWN(GLBL, 13, "iface_clk",	rotator_p_clk,	"footswitch-pcom.6"),
 	{ CLK_LOOKUP("iface_clk",     uart1dm_p_clk.c, "msm_serial_hs.0"),
 		O(GLBL), BIT(8), &dummy_clk },
+#ifdef CONFIG_SERIAL_MSM_HS
 	{ CLK_LOOKUP("iface_clk",     uart1dm_p_clk.c, "msm_serial_hs_brcm.0"),/* for brcm BT */
 		O(GLBL), BIT(8), &dummy_clk },
-
+#endif
+#ifdef CONFIG_SERIAL_MSM_HS_LPM
+	{ CLK_LOOKUP("iface_clk",     uart1dm_p_clk.c, "msm_serial_hs_brcm_lpm.0"),/* for brcm BT */
+		O(GLBL), BIT(8), &dummy_clk },
+#endif
 	{ CLK_LOOKUP("iface_clk",     uart2dm_p_clk.c, "msm_serial_hs.1"),
 		O(GLBL), BIT(8), &dummy_clk },
 };
