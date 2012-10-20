@@ -241,6 +241,12 @@ config PERFLOCK
         default n
         bool "HTC Performance Lock"
 
+config HIGH_OC_VALUES
+        depends on CPU_FREQ
+	depends on ARCH_MSM7X30
+        default n
+        bool "Support OC values > 1.5GHz"
+
 config PERFLOCK_BOOT_LOCK
         depends on PERFLOCK
         depends on ARCH_MSM8960 || ARCH_MSM8X60 || ARCH_QSD8X50 || ARCH_MSM7X30 || ARCH_MSM7X00A || ARCH_MSM7X27A || ARCH_MSM7X25
