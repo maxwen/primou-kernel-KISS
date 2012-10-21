@@ -288,6 +288,7 @@ CONFIG_MSM_VIC=y
 # CONFIG_MSM_MPM is not set
 CONFIG_MSM_REMOTE_SPINLOCK_DEKKERS=y
 # CONFIG_PERFLOCK is not set
+# CONFIG_HIGH_OC_VALUES is not set
 
 #
 # MSM Board Selection

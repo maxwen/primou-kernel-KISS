@@ -288,6 +288,7 @@ CONFIG_MSM_VIC=y
 # CONFIG_MSM_MPM is not set
 CONFIG_MSM_REMOTE_SPINLOCK_DEKKERS=y
 # CONFIG_PERFLOCK is not set
+# CONFIG_HIGH_OC_VALUES is not set
 
 #
 # MSM Board Selection
@@ -997,8 +998,6 @@ CONFIG_NET_SCH_FIFO=y
 # CONFIG_CAN is not set
 # CONFIG_IRDA is not set
 CONFIG_BT=y
-CONFIG_BT_L2CAP=y
-# CONFIG_BT_SCO is not set
 # CONFIG_BT_RFCOMM is not set
 # CONFIG_BT_BNEP is not set
 CONFIG_BT_HIDP=y
