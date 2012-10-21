@@ -1351,6 +1351,16 @@ static int mass_storage_function_init(struct android_usb_function *f,
 			kfree(config);
 			return err;
 		}
+		// maxwen add link named lun to lun0
+		if(i==0){
+			err=sysfs_create_link(&f->dev->kobj,
+                                           &common->luns[i].dev.kobj, "lun");
+			if (err) {
+				fsg_common_release(&common->ref);
+				kfree(config);
+				return err;
+			}
+		}
 	}
 
 	config->common = common;
